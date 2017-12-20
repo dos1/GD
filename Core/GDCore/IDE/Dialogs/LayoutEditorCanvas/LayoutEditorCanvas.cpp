@@ -52,7 +52,7 @@ using namespace std;
 namespace gd
 {
 
-BEGIN_EVENT_TABLE(LayoutEditorCanvas,wxPanel)
+BEGIN_EVENT_TABLE(LayoutEditorCanvas,wxControl)
 	//(*EventTable(LayoutEditorCanvas)
 	//*)
 END_EVENT_TABLE()
@@ -100,6 +100,7 @@ wxRibbonButtonBar * LayoutEditorCanvas::modeRibbonBar = NULL;
 LayoutEditorCanvas::LayoutEditorCanvas(wxWindow* parent, gd::Project & project_,
     gd::Layout & layout_, gd::InitialInstancesContainer & instances_,
     LayoutEditorCanvasOptions & options_, gd::MainFrameWrapper & mainFrameWrapper_, gd::ExternalLayout * externalLayout_) :
+    WxRenderingWindow(parent),
     project(project_),
     layout(layout_),
     externalLayout(externalLayout_),
@@ -120,50 +121,12 @@ LayoutEditorCanvas::LayoutEditorCanvas(wxWindow* parent, gd::Project & project_,
     smallButtonSize(gd::GUIContentScaleFactor::Get() > 1 ? 12 : 5),
     firstRefresh(true),
     isSelecting(false),
-    editing(true),
-    enableIdleEvents(true)
+    editing(true)
 {
 	//(*Initialize(LayoutEditorCanvas)
-	Create(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxWANTS_CHARS, _T("wxID_ANY"));
 	//*)
 
-    //Initialization allowing to run SFML within the wxWidgets control.
-    //See also LayoutEditorCanvas::OnUpdate & co.
-    #ifdef __WXGTK__
 
-        // GTK implementation requires to go deeper to find the low-level X11 identifier of the widget
-        gtk_widget_realize(m_wxwindow); //Required to create the internal gtk window
-        gtk_widget_set_double_buffered(m_wxwindow, false);
-
-        GtkWidget* privHandle = m_wxwindow;
-        wxPizza * pizza = WX_PIZZA(privHandle);
-        GtkWidget * widget = GTK_WIDGET(pizza);
-
-        //Get the internal gtk window...
-        #if GTK_CHECK_VERSION(3, 0, 0)
-        GdkWindow* win = gtk_widget_get_window(widget);
-        #else
-        GdkWindow* win = widget->window;
-        #endif
-        XFlush(GDK_WINDOW_XDISPLAY(win));
-
-        //...and pass it to the sf::RenderWindow.
-        #if GTK_CHECK_VERSION(3, 0, 0)
-        sf::RenderWindow::create(GDK_WINDOW_XID(win), sf::ContextSettings(24, 8));
-        #else
-        sf::RenderWindow::create(GDK_WINDOW_XWINDOW(win), sf::ContextSettings(24, 8));
-        #endif
-
-    #else
-
-        // Tested under Windows XP only (should work with X11 and other Windows versions - no idea about MacOS)
-        sf::RenderWindow::create(static_cast<sf::WindowHandle>(GetHandle()), sf::ContextSettings(24, 8));
-
-    #endif
-
-	Connect(wxEVT_PAINT,(wxObjectEventFunction)&LayoutEditorCanvas::OnPaint);
-	Connect(wxEVT_ERASE_BACKGROUND,(wxObjectEventFunction)&LayoutEditorCanvas::OnEraseBackground);
-	Connect(wxEVT_IDLE,(wxObjectEventFunction)&LayoutEditorCanvas::OnIdle);
 	Connect(wxEVT_LEFT_DOWN,(wxObjectEventFunction)&LayoutEditorCanvas::OnLeftDown);
 	Connect(wxEVT_LEFT_UP,(wxObjectEventFunction)&LayoutEditorCanvas::OnLeftUp);
 	Connect(wxEVT_LEFT_DCLICK,(wxObjectEventFunction)&LayoutEditorCanvas::OnLeftDClick);
@@ -302,7 +265,7 @@ LayoutEditorCanvas::LayoutEditorCanvas(wxWindow* parent, gd::Project & project_,
         }
     }
 
-    setFramerateLimit(30);
+    SetFramerateLimit(30);
     editionView.setCenter( (project.GetMainWindowDefaultWidth()/2),(project.GetMainWindowDefaultHeight()/2));
     RecreateRibbonToolbar();
     UpdateModeButtonsState();
@@ -313,27 +276,6 @@ LayoutEditorCanvas::~LayoutEditorCanvas()
 	//(*Destroy(LayoutEditorCanvas)
 	//*)
 }
-
-void LayoutEditorCanvas::OnIdle(wxIdleEvent & event)
-{
-    if(enableIdleEvents)
-    {
-        // Send a paint message when the control is idle, to ensure maximum framerate
-        Refresh();
-        #if defined(__WXGTK__)
-        event.RequestMore(); //On GTK, we need to specify that we want continuous idle events.
-        #endif
-    }
-}
-
-void LayoutEditorCanvas::OnPaint(wxPaintEvent&)
-{
-    // Make sure the control is able to be repainted
-    wxPaintDC Dc(this);
-    OnUpdate();
-}
-
-void LayoutEditorCanvas::OnEraseBackground(wxEraseEvent&) {}
 
 void LayoutEditorCanvas::AddAssociatedEditor(gd::LayoutEditorCanvasAssociatedEditor * editor)
 {
@@ -741,6 +683,7 @@ void LayoutEditorCanvas::OnLeftDown( wxMouseEvent &event )
 {
     SetFocus();
 
+    event.Skip();
     if ( !editing ) return;
 
     if ( hasJustRightClicked )
@@ -755,7 +698,7 @@ void LayoutEditorCanvas::OnLeftDown( wxMouseEvent &event )
     //Check if there is a click on a gui element inside the layout
     for (std::size_t i = 0;i<guiElements.size();++i)
     {
-        if ( guiElements[i].area.Contains(wxPoint(sf::Mouse::getPosition(*this).x, sf::Mouse::getPosition(*this).y)) )
+        if ( guiElements[i].area.Contains(wxPoint(gd::WxRenderingWindow::GetMousePosition(*this).x, gd::WxRenderingWindow::GetMousePosition(*this).y)) )
         {
             OnGuiElementPressed(guiElements[i]);
             return ;
@@ -805,6 +748,7 @@ void LayoutEditorCanvas::OnLeftDown( wxMouseEvent &event )
 
 void LayoutEditorCanvas::OnRightUp( wxMouseEvent &event )
 {
+    event.Skip();
     if ( !editing ) return;
 
 
@@ -923,8 +867,9 @@ private:
     std::set<gd::String> excludedLayers;
 };
 
-void LayoutEditorCanvas::OnLeftUp(wxMouseEvent &)
+void LayoutEditorCanvas::OnLeftUp(wxMouseEvent & event)
 {
+    event.Skip();
     if ( !editing ) return;
 
     if ( !currentDraggableBt.empty() ) //First check if we were dragging a button.
@@ -945,7 +890,7 @@ void LayoutEditorCanvas::OnLeftUp(wxMouseEvent &)
     //Check if there is a click released on a gui element inside the layout
     for (std::size_t i = 0;i<guiElements.size();++i)
     {
-        if ( guiElements[i].area.Contains(wxPoint(sf::Mouse::getPosition(*this).x, sf::Mouse::getPosition(*this).y)) )
+        if ( guiElements[i].area.Contains(wxPoint(gd::WxRenderingWindow::GetMousePosition(*this).x, gd::WxRenderingWindow::GetMousePosition(*this).y)) )
         {
             OnGuiElementReleased(guiElements[i]);
             return;
@@ -1005,8 +950,9 @@ void LayoutEditorCanvas::OnLeftUp(wxMouseEvent &)
     }
 }
 
-void LayoutEditorCanvas::OnMotion(wxMouseEvent &)
+void LayoutEditorCanvas::OnMotion(wxMouseEvent & event)
 {
+    event.Skip();
     if (!editing) return;
 
     auto preserveWidthRatio = [this](gd::InitialInstance * instance) {
@@ -1107,7 +1053,7 @@ void LayoutEditorCanvas::OnMotion(wxMouseEvent &)
     {
         for ( auto & it : selectedInstances)
         {
-            float newAngle = atan2(sf::Mouse::getPosition(*this).y-angleButtonCenter.y, sf::Mouse::getPosition(*this).x-angleButtonCenter.x)*180/3.14159;
+            float newAngle = atan2(gd::WxRenderingWindow::GetMousePosition(*this).y-angleButtonCenter.y, gd::WxRenderingWindow::GetMousePosition(*this).x-angleButtonCenter.x)*180/3.14159;
             if (shiftPressed) newAngle = gd::Round(newAngle / 15.0) * 15.0;
             it.first->SetAngle(newAngle);
         }
@@ -1119,9 +1065,9 @@ void LayoutEditorCanvas::OnMotion(wxMouseEvent &)
         //Moving using middle click
         if ( isMovingView )
         {
-            float zoomFactor = static_cast<float>(getSize().x)/editionView.getSize().x;
+            float zoomFactor = static_cast<float>(GetSize().x)/editionView.getSize().x;
 
-            editionView.setCenter( movingViewStartPosition + (movingViewMouseStartPosition - sf::Vector2f(sf::Mouse::getPosition(*this)))/zoomFactor );
+            editionView.setCenter( movingViewStartPosition + (movingViewMouseStartPosition - sf::Vector2f(gd::WxRenderingWindow::GetMousePosition(*this)))/zoomFactor );
         }
 
         double mouseX = GetMouseXOnLayout();
@@ -1134,7 +1080,7 @@ void LayoutEditorCanvas::OnMotion(wxMouseEvent &)
         bool hoveringSomething = false;
         for (std::size_t i = 0;i<guiElements.size();++i)
         {
-            if ( guiElements[i].area.Contains(wxPoint(sf::Mouse::getPosition(*this).x, sf::Mouse::getPosition(*this).y)) ) {
+            if ( guiElements[i].area.Contains(wxPoint(gd::WxRenderingWindow::GetMousePosition(*this).x, gd::WxRenderingWindow::GetMousePosition(*this).y)) ) {
                 OnGuiElementHovered(guiElements[i]);
                 hoveringSomething = true;
             }
@@ -1169,19 +1115,21 @@ void LayoutEditorCanvas::OnMotion(wxMouseEvent &)
     }
 }
 
-void LayoutEditorCanvas::OnMiddleDown(wxMouseEvent &)
+void LayoutEditorCanvas::OnMiddleDown(wxMouseEvent & event)
 {
+    event.Skip();
     if ( !editing ) return;
 
     //User can move the view thanks to middle click
     isMovingView = true;
-    movingViewMouseStartPosition = sf::Vector2f(sf::Mouse::getPosition(*this));
-    movingViewStartPosition = getView().getCenter();
+    movingViewMouseStartPosition = sf::Vector2f(gd::WxRenderingWindow::GetMousePosition(*this));
+    movingViewStartPosition = GetRenderingTarget().getView().getCenter();
     SetCursor(wxCursor(wxCURSOR_SIZING));
 }
 
 void LayoutEditorCanvas::OnMiddleUp(wxMouseEvent & event)
 {
+    event.Skip();
     if ( !editing ) return;
 
     isMovingView = false;
@@ -1190,6 +1138,7 @@ void LayoutEditorCanvas::OnMiddleUp(wxMouseEvent & event)
 
 void LayoutEditorCanvas::OnLeftDClick( wxMouseEvent &event )
 {
+    event.Skip();
     if ( !editing ) return;
 
     parentAuiManager->GetPane("PROPERTIES").Show();
@@ -1200,7 +1149,7 @@ void LayoutEditorCanvas::OnKey( wxKeyEvent& evt )
 {
     if (!editing)
     {
-        evt.StopPropagation();
+        evt.Skip(); //To allow WxRenderingWindow to generate events from this
         return;
     }
 
@@ -1280,11 +1229,9 @@ void LayoutEditorCanvas::OnKey( wxKeyEvent& evt )
 
 void LayoutEditorCanvas::OnKeyUp( wxKeyEvent& evt )
 {
+    evt.Skip(); //To allow WxRenderingWindow to generate events from this
     if (!editing)
-    {
-        evt.StopPropagation();
         return;
-    }
 
     if ( evt.GetKeyCode() == WXK_CONTROL )
         ctrlPressed = false;
@@ -1473,12 +1420,12 @@ void LayoutEditorCanvas::OnFullScreenBtClick(wxCommandEvent & event)
 
 double LayoutEditorCanvas::GetMouseXOnLayout() const
 {
-    return mapPixelToCoords(sf::Mouse::getPosition(*this), editionView).x;
+    return GetRenderingTarget().mapPixelToCoords(gd::WxRenderingWindow::GetMousePosition(*this), editionView).x;
 }
 
 double LayoutEditorCanvas::GetMouseYOnLayout() const
 {
-    return mapPixelToCoords(sf::Mouse::getPosition(*this), editionView).y;
+    return GetRenderingTarget().mapPixelToCoords(gd::WxRenderingWindow::GetMousePosition(*this), editionView).y;
 }
 
 sf::Vector2f LayoutEditorCanvas::GetInitialInstanceSize(gd::InitialInstance & instance) const
