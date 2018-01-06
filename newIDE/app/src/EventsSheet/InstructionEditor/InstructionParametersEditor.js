@@ -7,10 +7,19 @@ import ParameterRenderingService from './ParameterRenderingService';
 const gd = global.gd;
 
 const styles = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+  },
   emptyContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  parametersContainer: {
+    flex: 1,
+    overflowY: 'auto',
   },
   instructionHeader: {
     display: 'flex',
@@ -40,7 +49,7 @@ export default class InstructionParametersEditor extends Component {
         <EmptyMessage>
           {this.props.isCondition
             ? 'Choose a condition on the left'
-            : 'Choose a condition on the right'}
+            : 'Choose an action on the left'}
         </EmptyMessage>
       </div>
     );
@@ -65,19 +74,17 @@ export default class InstructionParametersEditor extends Component {
     instruction.setParametersCount(instructionMetadata.getParametersCount());
 
     return (
-      <div style={this.props.style}>
+      <div style={styles.container}>
         <div style={styles.instructionHeader}>
           <img
             src={instructionMetadata.getIconFilename()}
             alt=""
             style={styles.icon}
           />
-          <p>
-            {instructionMetadata.getDescription()}
-          </p>
+          <p>{instructionMetadata.getDescription()}</p>
         </div>
         <Divider />
-        <div>
+        <div key={type} style={styles.parametersContainer}>
           {mapFor(0, instructionMetadata.getParametersCount(), i => {
             const parameterMetadata = instructionMetadata.getParameter(i);
             const ParameterComponent = ParameterRenderingService.getParameterComponent(
@@ -91,19 +98,20 @@ export default class InstructionParametersEditor extends Component {
                 project={project}
                 layout={layout}
                 value={instruction.getParameter(i)}
+                instructionOrExpression={instruction}
                 key={i}
                 onChange={value => {
                   instruction.setParameter(i, value);
                   this.forceUpdate();
                 }}
+                parameterRenderingService={ParameterRenderingService}
               />
             );
           })}
-          {this._getNonCodeOnlyParametersCount(instructionMetadata) === 0 &&
-            <EmptyMessage>
-              There is nothing to configure.
-            </EmptyMessage>}
-          {this.props.isCondition &&
+          {this._getNonCodeOnlyParametersCount(instructionMetadata) === 0 && (
+            <EmptyMessage>There is nothing to configure.</EmptyMessage>
+          )}
+          {this.props.isCondition && (
             <Toggle
               label="Invert condition"
               labelPosition="right"
@@ -113,7 +121,8 @@ export default class InstructionParametersEditor extends Component {
                 instruction.setInverted(enabled);
                 this.forceUpdate();
               }}
-            />}
+            />
+          )}
         </div>
       </div>
     );

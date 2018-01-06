@@ -494,7 +494,7 @@ void LayoutEditorCanvas::LaunchPreview()
 void LayoutEditorCanvas::OnEditionBtClick( wxCommandEvent & event )
 {
     if ( editing ) return;
-    std::cout << "Switching to edition mode..." << std::endl;
+    std::cout << "Switching to editing mode..." << std::endl;
     editing = true;
 
     //Notice the previewer it must stop preview.
@@ -1127,7 +1127,7 @@ void LayoutEditorCanvas::OnMotion(wxMouseEvent &)
         double mouseX = GetMouseXOnLayout();
         double mouseY = GetMouseYOnLayout();
 
-        gd::LogStatus( wxString::Format(  wxString(_( "Position %f;%f. SHIFT for multiple selection, right click for more options." )),
+        gd::LogStatus( wxString::Format(  wxString(_( "Position %f;%f. Hold SHIFT to select multiple items, and right-click for more options." )),
             mouseX, mouseY ));
 
         //Check if there is a gui element hovered inside the layout
@@ -1252,6 +1252,24 @@ void LayoutEditorCanvas::OnKey( wxKeyEvent& evt )
             it.first->SetX(it.first->GetX()-1);
 
         eventIsOnlyForMe = true;
+    }
+    else if ( evt.GetModifiers() == wxMOD_CMD ) //Ctrl-xxx
+    {
+        switch ( evt.GetKeyCode() )
+        {
+            case 89: //Ctrl-Y
+            {
+                Redo();
+                break;
+            }
+            case 90: //Ctrl-Z
+            {
+                Undo();
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     if (eventIsOnlyForMe)

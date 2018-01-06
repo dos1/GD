@@ -4,11 +4,24 @@ import Close from 'material-ui/svg-icons/navigation/close';
 import FlatButton from 'material-ui/FlatButton';
 import muiThemeable from 'material-ui/styles/muiThemeable';
 
+const styles = {
+  tabsContainerStyle: {
+    maxWidth: '100%',
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  tabTemplateStyle: {
+    height: '100%',
+  },
+};
+
 export class ThemableTabs extends Component {
   render() {
     const { muiTheme, hideLabels, ...tabsProps } = this.props;
     const tabItemContainerStyle = {
-      maxWidth: '100%',
+      maxWidth: '100%', // Tabs should take all width
+      flexShrink: 0, // Tabs height should never be reduced
       overflowX: 'auto',
       display: hideLabels ? 'none' : 'block',
       backgroundColor: muiTheme.closableTabs.backgroundColor,
@@ -16,18 +29,15 @@ export class ThemableTabs extends Component {
 
     const contentContainerStyle = {
       overflowY: 'hidden',
-      height: hideLabels ? '100%' : `calc(100% - ${muiTheme.closableTabs.height}px)`,
+      height: hideLabels
+        ? '100%'
+        : `calc(100% - ${muiTheme.closableTabs.height}px)`,
     };
 
     return (
       <MaterialUITabs
-        style={{
-          maxWidth: '100%',
-          flex: 1,
-        }}
-        tabTemplateStyle={{
-          height: '100%',
-        }}
+        style={styles.tabsContainerStyle}
+        tabTemplateStyle={styles.tabTemplateStyle}
         contentContainerStyle={contentContainerStyle}
         tabItemContainerStyle={tabItemContainerStyle}
         inkBarStyle={{ display: 'none' }}
@@ -44,18 +54,29 @@ class ThemableTab extends Component {
   static muiName = 'Tab';
 
   render() {
-    const {muiTheme, selected, onClose, label, ...tabProps} = this.props;
+    const {
+      muiTheme,
+      selected,
+      onClose,
+      label,
+      closable,
+      ...tabProps
+    } = this.props;
 
     const truncatedLabel = (
-      <span style={{
-        width: muiTheme.closableTabs.width - muiTheme.closableTabs.closeButtonWidth * 1.5,
-        marginRight: muiTheme.closableTabs.closeButtonWidth,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
+      <span
+        style={{
+          width:
+            muiTheme.closableTabs.width -
+            muiTheme.closableTabs.closeButtonWidth * 1.5,
+          marginRight: muiTheme.closableTabs.closeButtonWidth,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
         {label}
       </span>
-    )
+    );
 
     return (
       <span
@@ -83,31 +104,35 @@ class ThemableTab extends Component {
             width: '100%',
           }}
         />
-        <FlatButton
-          backgroundColor="transparent"
-          hoverColor={muiTheme.selectedBackgroundColor}
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            bottom: 0,
-            borderRadius: 0,
-            width: muiTheme.closableTabs.closeButtonWidth,
-            minWidth: muiTheme.closableTabs.closeButtonWidth,
-          }}
-          icon={
-            <Close
-              color={selected
-              ? muiTheme.closableTabs.selectedTextColor
-              : muiTheme.closableTabs.textColor}
-              style={{
-                width: muiTheme.closableTabs.height / 2,
-                height: muiTheme.closableTabs.height / 2,
-              }}
-            />
-          }
-        />
+        {closable && (
+          <FlatButton
+            backgroundColor="transparent"
+            hoverColor={muiTheme.selectedBackgroundColor}
+            onClick={onClose}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              borderRadius: 0,
+              width: muiTheme.closableTabs.closeButtonWidth,
+              minWidth: muiTheme.closableTabs.closeButtonWidth,
+            }}
+            icon={
+              <Close
+                color={
+                  selected
+                    ? muiTheme.closableTabs.selectedTextColor
+                    : muiTheme.closableTabs.textColor
+                }
+                style={{
+                  width: muiTheme.closableTabs.height / 2,
+                  height: muiTheme.closableTabs.height / 2,
+                }}
+              />
+            }
+          />
+        )}
       </span>
     );
   }

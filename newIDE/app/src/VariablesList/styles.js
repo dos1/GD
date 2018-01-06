@@ -10,12 +10,14 @@ export default {
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  indentIconColor: '#DDD',
-  variableRow: {
-    backgroundColor: 'white',
-    height: 42,
-  },
+  indentIconColor: '#DDD', //TODO: Use theme color instead
   addVariableMessage: {
     justifyContent: 'flex-end',
+  },
+  emptyExplanation: {
+    justifyContent: 'flex-start',
+  },
+  emptyExplanationMessage: {
+    textAlign: 'left',
   },
 };

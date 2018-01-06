@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import FlatButton from 'material-ui/FlatButton';
 import TextField from 'material-ui/TextField';
-import Dialog from 'material-ui/Dialog';
+import Dialog from '../../UI/Dialog';
 import RaisedButton from 'material-ui/RaisedButton';
 import ColorField from '../../UI/ColorField';
 
@@ -47,20 +47,19 @@ export default class ScenePropertiesDialog extends Component {
       <FlatButton
         label="Cancel"
         primary={false}
-        onTouchTap={this.props.onClose}
+        onClick={this.props.onClose}
       />,
       <FlatButton
         label="Apply"
         primary={true}
         keyboardFocused={true}
-        onTouchTap={this._onApply}
+        onClick={this._onApply}
       />,
     ];
 
     return (
       <Dialog
         actions={actions}
-        modal={true}
         open={this.props.open}
         onRequestClose={this.props.onClose}
         autoScrollBodyContent={true}
@@ -81,15 +80,24 @@ export default class ScenePropertiesDialog extends Component {
           onChangeComplete={color =>
             this.setState({ backgroundColor: color.rgb })}
         />
-        {this.props.onOpenMoreSettings &&
+        <RaisedButton
+          label="Edit scene variables"
+          fullWidth
+          onClick={() => {
+            this.props.onEditVariables();
+            this.props.onClose();
+          }}
+        />
+        {this.props.onOpenMoreSettings && (
           <RaisedButton
             label="Open advanced settings"
             fullWidth
-            onTouchTap={() => {
+            onClick={() => {
               this.props.onOpenMoreSettings();
               this.props.onClose();
             }}
-          />}
+          />
+        )}
       </Dialog>
     );
   }

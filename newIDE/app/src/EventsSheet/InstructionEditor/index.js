@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import Paper from 'material-ui/Paper';
-import InstructionTypeSelector from './InstructionTypeSelector.js';
+import InstructionSelector from './InstructionOrExpressionSelector/InstructionSelector.js';
 import InstructionParametersEditor from './InstructionParametersEditor.js';
 
 const styles = {
@@ -11,10 +11,10 @@ const styles = {
   typeSelector: {
     flex: 1,
     overflowY: 'scroll',
-    backgroundColor: 'white',
   },
   parametersEditor: {
     flex: 2,
+    display: 'flex',
     paddingLeft: 16,
     paddingRight: 16,
     zIndex: 1, // Put the Paper shadow on the type selector
@@ -27,7 +27,7 @@ export default class InstructionEditor extends Component {
 
     return (
       <div style={styles.container}>
-        <InstructionTypeSelector
+        <InstructionSelector
           style={styles.typeSelector}
           isCondition={isCondition}
           selectedType={instruction.getType()}

@@ -52,7 +52,24 @@ cd newIDE/app
 yarn storybook #or npm run storybook
 ```
 
-## Building the standalone app
+### Tests
+
+Unit tests can be launched with this command:
+
+```bash
+cd newIDE/app
+yarn test #or npm run test
+```
+
+### Theming
+
+It's possible to create new themes for the UI. See [this file](https://github.com/4ian/GD/blob/master/newIDE/app/src/UI/Theme/index.js) to declare a new theme. You can take a look at the [default theme](https://github.com/4ian/GD/blob/master/newIDE/app/src/UI/Theme/DefaultTheme/index.js), including the [styling of the Events Sheets](https://github.com/4ian/GD/blob/master/newIDE/app/src/UI/Theme/DefaultTheme/EventsSheet.css).
+
+## Building and deploying the standalone app
+
+### Desktop version
+
+Update version number which is read in `newIDE/electron-app/app/package.json`.
 
 ```bash
 cd newIDE/electron-app
@@ -61,19 +78,29 @@ yarn build #or npm run build
 
 This will build and package the Electron app for Windows, macOS and Linux (according to your OS).
 The output are stored inside `newIDE/electron-app/dist` and copied to `Binaries/Output/Release_XXX`.
-Version number is read from `newIDE/electron-app/app/package.json`.
 
-## Current status
+### Webapp version
 
-This new editor is still in development and not yet ready to build games from scratch:
+```bash
+cd newIDE/web-app
+yarn deploy #or npm run deploy
+```
 
-- [x] Scene editor
-- [x] Export
-- [ ] Events editor
-- [x] Objects editor
+## Current status and how to contribute
+
+This new editor is still in development and is missing some features:
+
+- [ ] Support for translations (See an [example of a component that can be translated](https://github.com/4ian/GD/blob/master/newIDE/app/src/MainFrame/Toolbar.js#L44))
+- [ ] [Collision mask editor](https://trello.com/c/2Kzwj61r/47-collision-masks-editors-for-sprite-objects-in-the-new-ide)
 - [ ] Support for native games
-- [ ] Editor available online
-- [ ] Export with Cocos2d-JS to Android and iOS.
+- [ ] More [documentation](http://wiki.compilgames.net/doku.php/gdevelop5/start) about how to package for iOS/Android with Cordova/PhoneGap Build or Cocos2d-JS.
+- [ ] Search in events
+- [ ] More [examples](https://github.com/4ian/GD/blob/master/newIDE/app/src/ProjectCreation/BrowserExamples.js)
+- [ ] More [tutorials](http://wiki.compilgames.net/doku.php/gdevelop5/start)
+- [ ] Add more [keyboard shortcuts](https://github.com/4ian/GD/blob/master/newIDE/app/src/UI/KeyboardShortcuts/index.js)
+- [ ] Make drawers movable/draggable like the properties panel and the objects editor
+
+You can contribute by picking anything here or anything that you think is missing or could be improved in GD5! If you don't know how to start, it's a good idea to play a bit with the editor and see if there is something that is unavailable and that you can add or fix.
 
 ## Additional help
 

@@ -1,11 +1,9 @@
 import React, { Component } from 'react';
-import FullSizeEventsTree from './EventsTree/FullSizeEventsTree';
-import InstructionEditorDialog
-  from './InstructionEditor/InstructionEditorDialog';
-import '../UI/Theme/EventsSheet.css';
-import { container } from './ClassNames';
+import EventsTree from './EventsTree';
+import InstructionEditorDialog from './InstructionEditor/InstructionEditorDialog';
 import Toolbar from './Toolbar';
-import KeyboardShortcuts from './KeyboardShortcuts';
+import KeyboardShortcuts from '../UI/KeyboardShortcuts';
+import { passFullSize } from '../UI/FullSizeMeasurer';
 import InlineParameterEditor from './InlineParameterEditor';
 import ContextMenu from '../UI/Menu/ContextMenu';
 import Clipboard from '../Utils/Clipboard';
@@ -14,25 +12,42 @@ import {
   unserializeFromJSObject,
 } from '../Utils/Serializer';
 import {
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+  getHistoryInitialState,
+  saveToHistory,
+} from '../Utils/History';
+import {
   getInitialSelection,
   selectEvent,
   selectInstruction,
   hasSomethingSelected,
   hasEventSelected,
   hasInstructionSelected,
+  hasInstructionsListSelected,
   getSelectedEvents,
   getSelectedInstructions,
   clearSelection,
   getSelectedEventContexts,
+  getSelectedInstructionsContexts,
+  getSelectedInstructionsListsContexts,
+  selectInstructionsList,
 } from './SelectionHandler';
+import EmptyEventsPlaceholder from './EmptyEventsPlaceholder';
 const gd = global.gd;
 
 const CLIPBOARD_KIND = 'EventsAndInstructions';
 
+const FullSizeEventsTree = passFullSize(EventsTree, { useFlex: false });
+
 export default class EventsSheet extends Component {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
     this.state = {
+      history: getHistoryInitialState(props.events),
+
       editedInstruction: {
         isCondition: true,
         instruction: null,
@@ -44,10 +59,32 @@ export default class EventsSheet extends Component {
         instrsList: null,
         parameterIndex: 0,
       },
+
       selection: getInitialSelection(),
+
       inlineEditing: false,
       inlineEditingAnchorEl: null,
+      inlineEditingChangesMade: false,
     };
+
+    this._keyboardShortcuts = new KeyboardShortcuts({
+      onDelete: () => {
+        if (
+          this.state.inlineEditing ||
+          this.state.editedInstruction.instruction
+        )
+          return;
+
+        this.deleteSelection();
+      },
+      onCopy: this.copySelection,
+      onCut: this.cutSelection,
+      onPaste: this.pasteEventsOrInstructions,
+    });
+  }
+
+  componentWillUnmount() {
+    this._keyboardShortcuts.unmount();
   }
 
   updateToolbar() {
@@ -66,8 +103,8 @@ export default class EventsSheet extends Component {
         onRemove={this.deleteSelection}
         showPreviewButton={this.props.showPreviewButton}
         onPreview={this.props.onPreview}
-        canUndo={false /*TODO*/}
-        canRedo={false /*TODO*/}
+        canUndo={canUndo(this.state.history)}
+        canRedo={canRedo(this.state.history)}
         undo={this.undo}
         redo={this.redo}
         onOpenSettings={this.props.onOpenSettings}
@@ -90,7 +127,9 @@ export default class EventsSheet extends Component {
       }
     });
 
-    this._eventsTree.forceEventsUpdate();
+    this._saveChangesToHistory(() => {
+      this._eventsTree.forceEventsUpdate();
+    });
   };
 
   addNewEvent = (type, context) => {
@@ -115,14 +154,16 @@ export default class EventsSheet extends Component {
       return context.eventsList.insertNewEvent(
         project,
         type,
-        context.indexInList
+        context.indexInList + 1
       );
     });
 
-    this._eventsTree.forceEventsUpdate(() => {
-      if (!context && !hasEventsSelected) {
-        this._eventsTree.scrollToEvent(newEvents[0]);
-      }
+    this._saveChangesToHistory(() => {
+      this._eventsTree.forceEventsUpdate(() => {
+        if (!context && !hasEventsSelected) {
+          this._eventsTree.scrollToEvent(newEvents[0]);
+        }
+      });
     });
   };
 
@@ -143,18 +184,25 @@ export default class EventsSheet extends Component {
     });
   };
 
-  closeInstructionEditor() {
+  closeInstructionEditor(saveChanges = false) {
     if (this.state.editedInstruction.instruction) {
       this.state.editedInstruction.instruction.delete();
     }
 
-    this.setState({
-      editedInstruction: {
-        isCondition: true,
-        instruction: null,
-        instrsList: null,
+    this.setState(
+      {
+        editedInstruction: {
+          isCondition: true,
+          instruction: null,
+          instrsList: null,
+        },
       },
-    });
+      () => {
+        if (saveChanges) {
+          this._saveChangesToHistory();
+        }
+      }
+    );
   }
 
   selectEvent = eventContext => {
@@ -197,6 +245,22 @@ export default class EventsSheet extends Component {
     );
   };
 
+  openInstructionsListContextMenu = (x, y, instructionsListContext) => {
+    this.setState(
+      {
+        selection: selectInstructionsList(
+          this.state.selection,
+          instructionsListContext,
+          false
+        ),
+      },
+      () => {
+        this.updateToolbar();
+        this.instructionsListContextMenu.open(x, y);
+      }
+    );
+  };
+
   selectInstruction = instructionContext => {
     const multiSelect = this._keyboardShortcuts.shouldMultiSelect();
     this.setState(
@@ -216,24 +280,33 @@ export default class EventsSheet extends Component {
       editedParameter: parameterContext,
       inlineEditing: true,
       inlineEditingAnchorEl: parameterContext.domEvent.currentTarget,
+      inlineEditingChangesMade: false,
     });
   };
 
   closeParameterEditor = () => {
+    if (this.state.inlineEditingChangesMade) {
+      this._saveChangesToHistory();
+    }
+
     this.setState({
       inlineEditing: false,
       inlineEditingAnchorEl: null,
+      inlineEditingChangesMade: false,
     });
   };
 
   deleteSelection = () => {
+    const { events } = this.props;
     const eventsRemover = new gd.EventsRemover();
     getSelectedEvents(this.state.selection).forEach(event =>
-      eventsRemover.addEventToRemove(event));
+      eventsRemover.addEventToRemove(event)
+    );
     getSelectedInstructions(this.state.selection).forEach(instruction =>
-      eventsRemover.addInstructionToRemove(instruction));
+      eventsRemover.addInstructionToRemove(instruction)
+    );
 
-    eventsRemover.launch(this.props.events);
+    eventsRemover.launch(events);
     this.setState(
       {
         selection: clearSelection(),
@@ -241,24 +314,29 @@ export default class EventsSheet extends Component {
         inlineEditingAnchorEl: null,
       },
       () => {
-        this.updateToolbar();
-        this._eventsTree.forceEventsUpdate();
+        this._saveChangesToHistory(() => this._eventsTree.forceEventsUpdate());
       }
     );
   };
 
   copySelection = () => {
     const eventsList = new gd.EventsList();
+    const instructionsList = new gd.InstructionsList();
+
     getSelectedEvents(this.state.selection).forEach(event =>
-      eventsList.insertEvent(event, eventsList.getEventsCount()));
-    const instructionsList = [];
-    // getSelectedInstructions(this.state.selection).forEach(instruction =>
-    //   eventsRemover.addInstructionToRemove(instruction));
+      eventsList.insertEvent(event, eventsList.getEventsCount())
+    );
+    getSelectedInstructions(this.state.selection).forEach(instruction =>
+      instructionsList.insert(instruction, instructionsList.size())
+    );
 
     Clipboard.set(CLIPBOARD_KIND, {
       eventsList: serializeToJSObject(eventsList),
-      instructionsList,
+      instructionsList: serializeToJSObject(instructionsList),
     });
+
+    eventsList.delete();
+    instructionsList.delete();
   };
 
   cutSelection = () => {
@@ -268,7 +346,8 @@ export default class EventsSheet extends Component {
 
   pasteEvents = () => {
     if (
-      !hasEventSelected(this.state.selection) || !Clipboard.has(CLIPBOARD_KIND)
+      !hasEventSelected(this.state.selection) ||
+      !Clipboard.has(CLIPBOARD_KIND)
     )
       return;
 
@@ -287,23 +366,114 @@ export default class EventsSheet extends Component {
         eventContext.indexInList
       );
     });
+    eventsList.delete();
 
-    this._eventsTree.forceEventsUpdate();
+    this._saveChangesToHistory(() => this._eventsTree.forceEventsUpdate());
   };
 
   pasteInstructions = () => {
-    if (!hasInstructionSelected(this.state.selection)) return;
-    //TODO
+    if (
+      (!hasInstructionSelected(this.state.selection) &&
+        !hasInstructionsListSelected(this.state.selection)) ||
+      !Clipboard.has(CLIPBOARD_KIND)
+    )
+      return;
+
+    const instructionsList = new gd.InstructionsList();
+    unserializeFromJSObject(
+      instructionsList,
+      Clipboard.get(CLIPBOARD_KIND).instructionsList,
+      'unserializeFrom',
+      this.props.project
+    );
+    getSelectedInstructionsContexts(
+      this.state.selection
+    ).forEach(instructionContext => {
+      instructionContext.instrsList.insertInstructions(
+        instructionsList,
+        0,
+        instructionsList.size(),
+        instructionContext.indexInList
+      );
+    });
+    getSelectedInstructionsListsContexts(
+      this.state.selection
+    ).forEach(instructionsListContext => {
+      instructionsListContext.instrsList.insertInstructions(
+        instructionsList,
+        0,
+        instructionsList.size(),
+        instructionsListContext.instrsList.size()
+      );
+    });
+    instructionsList.delete();
+
+    this._saveChangesToHistory(() => this._eventsTree.forceEventsUpdate());
+  };
+
+  pasteEventsOrInstructions = () => {
+    if (hasEventSelected(this.state.selection)) this.pasteEvents();
+    else if (hasInstructionSelected(this.state.selection))
+      this.pasteInstructions();
+    else if (hasInstructionsListSelected(this.state.selection))
+      this.pasteInstructions();
+  };
+
+  _saveChangesToHistory = (cb: ?Function) => {
+    this.setState(
+      {
+        history: saveToHistory(this.state.history, this.props.events),
+      },
+      () => {
+        this.updateToolbar();
+        if (cb) cb();
+      }
+    );
+  };
+
+  undo = () => {
+    const { events, project } = this.props;
+    const newHistory = undo(this.state.history, events, project);
+
+    // /!\ Events were changed, so any reference to an existing event can now
+    // be invalid. Make sure to immediately trigger a forced update before
+    // any re-render that could use a deleted/invalid event.
+    this._eventsTree.forceEventsUpdate();
+
+    this.setState({ history: newHistory }, () => this.updateToolbar());
+  };
+
+  redo = () => {
+    const { events, project } = this.props;
+    const newHistory = redo(this.state.history, events, project);
+
+    // /!\ Events were changed, so any reference to an existing event can now
+    // be invalid. Make sure to immediately trigger a forced update before
+    // any re-render that could use a deleted/invalid event.
+    this._eventsTree.forceEventsUpdate();
+
+    this.setState({ history: newHistory }, () => this.updateToolbar());
   };
 
   render() {
-    const { project, layout, events } = this.props;
+    const {
+      project,
+      layout,
+      events,
+      onOpenExternalEvents,
+      onOpenLayout,
+    } = this.props;
     if (!project) return null;
 
     return (
-      <div className={container}>
+      <div
+        className="gd-events-sheet"
+        onFocus={() => this._keyboardShortcuts.focus()}
+        onBlur={() => this._keyboardShortcuts.blur()}
+        tabIndex={1}
+      >
         <FullSizeEventsTree
-          eventsTreeRef={eventsTree => this._eventsTree = eventsTree}
+          wrappedComponentRef={eventsTree => (this._eventsTree = eventsTree)}
           key={events.ptr}
           events={events}
           project={project}
@@ -312,13 +482,17 @@ export default class EventsSheet extends Component {
           onInstructionClick={this.selectInstruction}
           onInstructionDoubleClick={this.openInstructionEditor}
           onInstructionContextMenu={this.openInstructionContextMenu}
+          onInstructionsListContextMenu={this.openInstructionsListContextMenu}
           onAddNewInstruction={this.openInstructionEditor}
           onParameterClick={this.openParameterEditor}
           onEventClick={this.selectEvent}
           onEventContextMenu={this.openEventContextMenu}
           onAddNewEvent={context =>
             this.addNewEvent('BuiltinCommonInstructions::Standard', context)}
+          onOpenExternalEvents={onOpenExternalEvents}
+          onOpenLayout={onOpenLayout}
         />
+        {events && events.getEventsCount() === 0 && <EmptyEventsPlaceholder />}
         <InlineParameterEditor
           open={this.state.inlineEditing}
           anchorEl={this.state.inlineEditingAnchorEl}
@@ -329,54 +503,118 @@ export default class EventsSheet extends Component {
           onChange={value => {
             const { instruction, parameterIndex } = this.state.editedParameter;
             instruction.setParameter(parameterIndex, value);
-            this.forceUpdate();
-          }}
-        />
-        <KeyboardShortcuts
-          ref={keyboardShortcuts => this._keyboardShortcuts = keyboardShortcuts}
-          onDelete={() => {
-            if (
-              this.state.inlineEditing ||
-              this.state.editedInstruction.instruction
-            )
-              return;
-
-            this.deleteSelection();
+            this.setState({
+              inlineEditingChangesMade: true,
+            });
           }}
         />
         <ContextMenu
-          ref={eventContextMenu => this.eventContextMenu = eventContextMenu}
-          menuTemplate={[
+          ref={eventContextMenu => (this.eventContextMenu = eventContextMenu)}
+          buildMenuTemplate={() => [
             {
               label: 'Copy',
               click: () => this.copySelection(),
+              accelerator: 'CmdOrCtrl+C',
             },
             {
               label: 'Cut',
               click: () => this.cutSelection(),
+              accelerator: 'CmdOrCtrl+X',
             },
             {
               label: 'Paste',
               click: () => this.pasteEvents(),
+              enabled: Clipboard.has(CLIPBOARD_KIND),
+              accelerator: 'CmdOrCtrl+V',
             },
             { type: 'separator' },
             {
               label: 'Delete',
               click: () => this.deleteSelection(),
+              accelerator: 'Delete',
+            },
+            { type: 'separator' },
+            {
+              label: 'Undo',
+              click: this.undo,
+              enabled: canUndo(this.state.history),
+              accelerator: 'CmdOrCtrl+Z',
+            },
+            {
+              label: 'Redo',
+              click: this.redo,
+              enabled: canRedo(this.state.history),
+              accelerator: 'CmdOrCtrl+Shift+Z',
             },
           ]}
         />
         <ContextMenu
           ref={instructionContextMenu =>
-            this.instructionContextMenu = instructionContextMenu}
-          menuTemplate={[
+            (this.instructionContextMenu = instructionContextMenu)}
+          buildMenuTemplate={() => [
+            {
+              label: 'Copy',
+              click: () => this.copySelection(),
+              accelerator: 'CmdOrCtrl+C',
+            },
+            {
+              label: 'Cut',
+              click: () => this.cutSelection(),
+              accelerator: 'CmdOrCtrl+X',
+            },
+            {
+              label: 'Paste',
+              click: () => this.pasteInstructions(),
+              enabled: Clipboard.has(CLIPBOARD_KIND),
+              accelerator: 'CmdOrCtrl+V',
+            },
+            { type: 'separator' },
             {
               label: 'Delete',
               click: () => this.deleteSelection(),
+              accelerator: 'Delete',
+            },
+            { type: 'separator' },
+            {
+              label: 'Undo',
+              click: this.undo,
+              enabled: canUndo(this.state.history),
+              accelerator: 'CmdOrCtrl+Z',
+            },
+            {
+              label: 'Redo',
+              click: this.redo,
+              enabled: canRedo(this.state.history),
+              accelerator: 'CmdOrCtrl+Shift+Z',
             },
           ]}
         />
-        {this.state.editedInstruction.instruction &&
+        <ContextMenu
+          ref={instructionsListContextMenu =>
+            (this.instructionsListContextMenu = instructionsListContextMenu)}
+          buildMenuTemplate={() => [
+            {
+              label: 'Paste',
+              click: () => this.pasteInstructions(),
+              enabled: Clipboard.has(CLIPBOARD_KIND),
+              accelerator: 'CmdOrCtrl+V',
+            },
+            { type: 'separator' },
+            {
+              label: 'Undo',
+              click: this.undo,
+              enabled: canUndo(this.state.history),
+              accelerator: 'CmdOrCtrl+Z',
+            },
+            {
+              label: 'Redo',
+              click: this.redo,
+              enabled: canRedo(this.state.history),
+              accelerator: 'CmdOrCtrl+Shift+Z',
+            },
+          ]}
+        />
+        {this.state.editedInstruction.instruction && (
           <InstructionEditorDialog
             project={project}
             layout={layout}
@@ -400,10 +638,11 @@ export default class EventsSheet extends Component {
                 instrsList.insert(instruction, instrsList.size());
               }
 
-              this.closeInstructionEditor();
+              this.closeInstructionEditor(true);
               this._eventsTree.forceEventsUpdate();
             }}
-          />}
+          />
+        )}
       </div>
     );
   }

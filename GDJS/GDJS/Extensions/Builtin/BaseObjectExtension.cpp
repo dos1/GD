@@ -70,6 +70,8 @@ BaseObjectExtension::BaseObjectExtension()
     objectActions["ActivateBehavior"].SetFunctionName("activateBehavior").SetIncludeFile("runtimeobject.js");
     objectConditions["ObjectVariableChildExists"].SetFunctionName("variableChildExists").SetIncludeFile("runtimeobject.js");
     objectActions["ObjectVariableRemoveChild"].SetFunctionName("variableRemoveChild").SetIncludeFile("runtimeobject.js");
+    objectActions["ObjectVariableClearChildren"].SetFunctionName("variableClearChildren").SetIncludeFile("runtimeobject.js");
+    objectConditions["CollisionPoint"].SetFunctionName("isCollidingWithPoint").SetIncludeFile("runtimeobject.js");
 
     objectExpressions["X"].SetFunctionName("getX");
     objectExpressions["Y"].SetFunctionName("getY");

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import Dialog from 'material-ui/Dialog';
+import Dialog from '../UI/Dialog';
 import FlatButton from 'material-ui/FlatButton';
 
 export default class ConfirmCloseDialog extends Component {
@@ -23,34 +23,30 @@ export default class ConfirmCloseDialog extends Component {
       open: false,
     });
     if (this.onHandleAnswer) this.onHandleAnswer(false);
-  }
+  };
 
   handleClose = () => {
     this.setState({
       open: false,
     });
     if (this.onHandleAnswer) this.onHandleAnswer(true);
-  }
+  };
 
   render() {
     const actions = [
-      <FlatButton
-        label="Cancel"
-        primary={true}
-        onTouchTap={this.handleCancel}
-      />,
+      <FlatButton label="Cancel" onClick={this.handleCancel} />,
       <FlatButton
         label="Close project"
         primary={true}
-        onTouchTap={this.handleClose}
+        onClick={this.handleClose}
       />,
     ];
 
     return (
       <Dialog
         title="Close project"
+        onRequestClose={this.handleCancel}
         actions={actions}
-        modal={true}
         open={this.state.open}
       >
         Any changes that has not been saved will be lost.

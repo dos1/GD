@@ -1,6 +1,7 @@
-import slug from 'slug';
+import slugs from 'slugs';
 import PIXI from 'pixi.js';
 import ResourcesLoader from './ResourcesLoader';
+import { loadFontFace } from '../Utils/FontFaceLoader';
 const gd = global.gd;
 
 const loadedFontFamilies = {};
@@ -83,7 +84,8 @@ export default class PixiResourcesLoader {
     if (resource.getKind() !== 'image') return invalidTexture;
 
     loadedTextures[resourceName] = PIXI.Texture.fromImage(
-      ResourcesLoader.getResourceFullFilename(project, resourceName)
+      ResourcesLoader.getResourceFullFilename(project, resourceName),
+      true /* Treats request as cross-origin */
     );
 
     PixiResourcesLoader._initializeTexture(
@@ -104,12 +106,13 @@ export default class PixiResourcesLoader {
       return Promise.resolve(loadedFontFamilies[fontFilename]);
     }
 
-    // Load the given font using CSS Font Loading API.
-    const fontFamily = slug(fontFilename);
+    const fontFamily = slugs(fontFilename);
     const fullFilename = ResourcesLoader.getFullFilename(project, fontFilename);
-    const fontFace = new FontFace(fontFamily, `url(${fullFilename})`, {});
-    document.fonts.add(fontFace);
-    return fontFace.load().then(loadedFace => {
+    return loadFontFace(
+      fontFamily,
+      `url("${fullFilename}")`,
+      {}
+    ).then(loadedFace => {
       loadedFontFamilies[fontFilename] = fontFamily;
 
       return fontFamily;
@@ -126,7 +129,7 @@ export default class PixiResourcesLoader {
       return loadedFontFamilies[fontFilename];
     }
 
-    const fontFamily = slug(fontFilename);
+    const fontFamily = slugs(fontFilename);
     return fontFamily;
   }
 

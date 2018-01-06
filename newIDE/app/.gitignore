@@ -5,6 +5,7 @@ node_modules
 
 # testing
 coverage
+flow-coverage
 
 # production
 build
@@ -12,6 +13,7 @@ build
 # misc
 .DS_Store
 .env
+.env.local
 npm-debug.log
 
 # GD library
@@ -22,3 +24,4 @@ public/res
 public/CppPlatform
 public/JsPlatform
 resources/GDJS
+

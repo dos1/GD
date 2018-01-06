@@ -1,5 +1,5 @@
 import React from 'react';
-import Dialog from 'material-ui/Dialog';
+import Dialog from '../../UI/Dialog';
 import FlatButton from 'material-ui/FlatButton';
 import InstructionEditor from './index.js';
 
@@ -30,20 +30,19 @@ export default class InstructionEditorDialog extends React.Component {
       <FlatButton
         label="Cancel"
         primary={false}
-        onTouchTap={this.props.onCancel}
+        onClick={this.props.onCancel}
       />,
       <FlatButton
         label="Ok"
         primary={true}
-        keyboardFocused={true}
-        onTouchTap={this.props.onSubmit}
+        keyboardFocused={false}
+        onClick={this.props.onSubmit}
       />,
     ];
 
     return (
       <Dialog
         actions={actions}
-        modal={false}
         open={this.props.open}
         onRequestClose={this.props.onCancel}
         contentStyle={styles.dialogContent}

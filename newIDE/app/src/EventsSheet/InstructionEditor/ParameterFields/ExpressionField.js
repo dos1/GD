@@ -1,11 +1,5 @@
 import React, { Component } from 'react';
-import TextField from 'material-ui/TextField';
-
-const styles = {
-  input: {
-    fontFamily: '"Lucida Console", Monaco, monospace',
-  },
-};
+import GenericExpressionField from './GenericExpressionField';
 
 export default class ExpressionField extends Component {
   focus() {
@@ -13,20 +7,6 @@ export default class ExpressionField extends Component {
   }
 
   render() {
-    const { parameterMetadata } = this.props;
-    const description = parameterMetadata
-      ? parameterMetadata.getDescription()
-      : undefined;
-
-    return (
-      <TextField
-        value={this.props.value}
-        floatingLabelText={description}
-        inputStyle={styles.input}
-        onChange={(e, text) => this.props.onChange(text)}
-        ref={field => this._field = field}
-        fullWidth
-      />
-    );
+    return <GenericExpressionField expressionType="number" {...this.props} />;
   }
 }

@@ -1,28 +1,27 @@
 import React, { Component } from 'react';
-import Dialog from 'material-ui/Dialog';
+import Dialog from '../UI/Dialog';
 import FlatButton from 'material-ui/FlatButton';
 import RaisedButton from 'material-ui/RaisedButton';
 import { sendExportLaunched } from '../Utils/Analytics/EventSender';
 import { Column, Line, Spacer } from '../UI/Grid';
+import { showErrorBox } from '../UI/Messages/MessageBox';
 import { findGDJS } from './LocalGDJSFinder';
 import localFileSystem from './LocalFileSystem';
 import LocalFolderPicker from '../UI/LocalFolderPicker';
 import assignIn from 'lodash/assignIn';
 import optionalRequire from '../Utils/OptionalRequire';
+import Window from '../Utils/Window';
+import { getHelpLink } from '../Utils/HelpLink';
 const electron = optionalRequire('electron');
 const shell = electron ? electron.shell : null;
 
 const gd = global.gd;
 
 export default class LocalExport extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      exportFinishedDialogOpen: false,
-      outputDir: '',
-    };
-  }
+  state = {
+    exportFinishedDialogOpen: false,
+    outputDir: '',
+  };
 
   componentDidMount() {
     const { project } = this.props;
@@ -35,8 +34,7 @@ export default class LocalExport extends Component {
     return new Promise((resolve, reject) => {
       findGDJS(gdjsRoot => {
         if (!gdjsRoot) {
-          //TODO
-          console.error('Could not find GDJS');
+          showErrorBox('Could not find GDJS');
           return reject();
         }
         console.info('GDJS found in ', gdjsRoot);
@@ -78,12 +76,20 @@ export default class LocalExport extends Component {
         });
       })
       .catch(err => {
-        /*TODO: error*/
+        showErrorBox('Unable to export the game', err);
       });
   };
 
   openExportFolder = () => {
     shell.openItem(this.state.outputDir);
+  };
+
+  openItchioHelp = () => {
+    Window.openExternalURL(getHelpLink('/publishing/publishing-to-itch-io'));
+  };
+
+  openLearnMore = () => {
+    Window.openExternalURL(getHelpLink('/publishing'));
   };
 
   render() {
@@ -93,7 +99,8 @@ export default class LocalExport extends Component {
     return (
       <Column noMargin>
         <Line>
-          This will export your game to a folder that you can then upload on a website
+          This will export your game to a folder that you can then upload on a
+          website or on game hosting like itch.io.
         </Line>
         <Line>
           <LocalFolderPicker
@@ -108,7 +115,7 @@ export default class LocalExport extends Component {
           <RaisedButton
             label="Export"
             primary={true}
-            onTouchTap={this.launchExport}
+            onClick={this.launchExport}
             disabled={!this.state.outputDir}
           />
         </Line>
@@ -116,23 +123,38 @@ export default class LocalExport extends Component {
           title="Export finished"
           actions={[
             <FlatButton
+              key="open"
               label="Open folder"
               primary={true}
-              onTouchTap={this.openExportFolder}
+              onClick={this.openExportFolder}
             />,
             <FlatButton
+              key="close"
               label="Close"
               primary={false}
-              onTouchTap={() =>
+              onClick={() =>
                 this.setState({
                   exportFinishedDialogOpen: false,
                 })}
             />,
           ]}
-          modal={true}
+          modal
           open={this.state.exportFinishedDialogOpen}
         >
-          You can now upload the game to a web hosting to play to the game.
+          <p>
+            You can now upload the game to a web hosting to play to the game.
+          </p>
+          <RaisedButton
+            fullWidth
+            primary
+            onClick={() => this.openItchioHelp()}
+            label="Publish your game on Itch.io"
+          />
+          <FlatButton
+            fullWidth
+            onClick={() => this.openLearnMore()}
+            label="Learn more about publishing"
+          />
         </Dialog>
       </Column>
     );

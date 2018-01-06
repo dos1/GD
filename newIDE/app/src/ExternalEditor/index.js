@@ -5,11 +5,11 @@ import React, { Component } from 'react';
 import Window from '../Utils/Window.js';
 const gd = global.gd;
 
-type _State = {
+type State = {
   loading: boolean,
 };
 
-type _Props = {
+type Props = {
   serverPort: number,
   isIntegrated: boolean,
   editor: string,
@@ -17,10 +17,7 @@ type _Props = {
   children: React$Element<any>,
 };
 
-class ExternalEditor extends Component {
-  state: _State;
-  props: _Props;
-
+class ExternalEditor extends Component<Props, State> {
   bridge: Bridge;
   editorOpened: boolean = false;
   lastShowCommandDate: number = 0;
@@ -28,7 +25,7 @@ class ExternalEditor extends Component {
   editor: any = null;
   _serializedObject: any = null;
 
-  constructor(props: _Props) {
+  constructor(props: Props) {
     super(props);
 
     this.bridge = new Bridge();
@@ -167,7 +164,7 @@ class ExternalEditor extends Component {
               ' milliseconds.'
           );
 
-          this.editor.loadFullProject(this._serializedObject, () => {
+          this.editor.loadFromSerializedProject(this._serializedObject, () => {
             this._serializedObject.delete();
             this._serializedObject = null;
 
@@ -175,7 +172,7 @@ class ExternalEditor extends Component {
               this.editorOpened = true;
 
               if (this.props.editor === 'scene-editor') {
-                this.editor.openLayout(this.props.editedElementName, false);
+                this.editor.openLayout(this.props.editedElementName, {openEventsEditor: false});
               }
               if (this.props.editor === 'external-layout-editor') {
                 this.editor.openExternalLayout(this.props.editedElementName);
@@ -186,15 +183,14 @@ class ExternalEditor extends Component {
               loading: false,
             });
           });
-        }),
-      10 // Let some time for the loader to be shown
+        })
     );
   };
 
   render() {
     return React.cloneElement(this.props.children, {
       loading: this.state.loading,
-      ref: editor => this.editor = editor,
+      ref: editor => (this.editor = editor),
       requestUpdate: () => this.requestUpdate('', true),
       onEditObject: this.editObject,
       integratedEditor: true,

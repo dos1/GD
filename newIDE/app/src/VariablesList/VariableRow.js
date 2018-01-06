@@ -6,35 +6,35 @@ import AddCircle from 'material-ui/svg-icons/content/add-circle';
 import SubdirectoryArrowRight from 'material-ui/svg-icons/navigation/subdirectory-arrow-right';
 import TextField from 'material-ui/TextField';
 import IconButton from 'material-ui/IconButton';
+import muiThemeable from 'material-ui/styles/muiThemeable';
 import styles from './styles';
 
-const Indent = ({width}) => (
+const Indent = ({ width }) => (
   <div style={{ ...styles.indent, width }}>
     <SubdirectoryArrowRight color={styles.indentIconColor} />
   </div>
-)
+);
 
-const VariableRow = (
-  {
-    name,
-    variable,
-    depth,
-    errorText,
-    onBlur,
-    onRemove,
-    onAddChild,
-    onChangeValue,
-    children,
-  }
-) => {
+const ThemableVariableRow = ({
+  name,
+  variable,
+  depth,
+  errorText,
+  onBlur,
+  onRemove,
+  onAddChild,
+  onChangeValue,
+  children,
+  muiTheme,
+}) => {
   const isStructure = variable.isStructure();
   const key = '' + depth + name;
 
   const columns = [
-    <TreeTableCell
-      key="name"
-    >
-      {depth > 0 && <Indent width={(depth + 1) * styles.tableChildIndentation} />}
+    <TreeTableCell key="name">
+      {depth > 0 && (
+        <Indent width={(depth + 1) * styles.tableChildIndentation} />
+      )}
       {depth === 0 && <DragHandle />}
       <TextField
         fullWidth
@@ -62,10 +62,10 @@ const VariableRow = (
   }
   columns.push(
     <TreeTableCell key="tools" style={styles.toolColumn}>
-      <IconButton onTouchTap={onRemove}>
+      <IconButton onClick={onRemove}>
         <Delete />
       </IconButton>
-      <IconButton onTouchTap={onAddChild}>
+      <IconButton onClick={onAddChild}>
         <AddCircle />
       </IconButton>
     </TreeTableCell>
@@ -74,7 +74,7 @@ const VariableRow = (
   return (
     <div>
       <TreeTableRow
-        style={styles.variableRow}
+        style={{ backgroundColor: muiTheme.list.itemsBackgroundColor }}
       >
         {columns}
       </TreeTableRow>
@@ -83,4 +83,5 @@ const VariableRow = (
   );
 };
 
+const VariableRow = muiThemeable()(ThemableVariableRow);
 export default VariableRow;

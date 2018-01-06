@@ -13,7 +13,7 @@ export default class EventsEditor extends BaseEditor {
 
     return {
       ...BaseEditor.getLayoutSerializedElements(layout),
-      events: serializeToJSObject(layout.getEvents())
+      events: serializeToJSObject(layout.getEvents()),
     };
   }
 
@@ -35,11 +35,12 @@ export default class EventsEditor extends BaseEditor {
     return (
       <EventsSheet
         {...this.props}
-        ref={editor => this.editor = editor}
+        ref={editor => (this.editor = editor)}
         project={project}
         layout={layout}
         events={layout.getEvents()}
         onPreview={() => this.props.onPreview(project, layout)}
+        onOpenExternalEvents={this.props.onOpenExternalEvents}
       />
     );
   }

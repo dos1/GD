@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import FlatButton from 'material-ui/FlatButton';
 import TextField from 'material-ui/TextField';
-import Dialog from 'material-ui/Dialog';
+import Dialog from '../../UI/Dialog';
 
 export default class SetupGridDialog extends Component {
   constructor(props) {
@@ -20,27 +20,21 @@ export default class SetupGridDialog extends Component {
 
   render() {
     const actions = [
-      (
-        <FlatButton
-          label="Cancel"
-          primary={true}
-          onTouchTap={this.props.onCancel}
-        />
-      ),
-      (
-        <FlatButton
-          label="Apply"
-          primary={true}
-          keyboardFocused={true}
-          onTouchTap={this._onApply}
-        />
-      ),
+      <FlatButton
+        label="Cancel"
+        onClick={this.props.onCancel}
+      />,
+      <FlatButton
+        label="Apply"
+        primary={true}
+        keyboardFocused={true}
+        onClick={this._onApply}
+      />,
     ];
 
     return (
       <Dialog
         actions={actions}
-        modal={true}
         open={this.props.open}
         onRequestClose={this.props.onCancel}
         autoScrollBodyContent={true}

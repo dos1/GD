@@ -68,13 +68,13 @@ gdjs.Polygon.prototype.computeEdges = function() {
 		else v2 = this.vertices[i + 1];
 
 		this.edges[i][0] = v2[0] - v1[0];
-        this.edges[i][1] = v2[1] - v1[1];
+		this.edges[i][1] = v2[1] - v1[1];
 	}
 };
 
 gdjs.Polygon.prototype.isConvex = function() {
 	this.computeEdges();
-	edgesLen = this.edges.length;
+	var edgesLen = this.edges.length;
 
 	if ( edgesLen < 3 ) {
 		return false;
@@ -87,7 +87,7 @@ gdjs.Polygon.prototype.isConvex = function() {
 		if ( (zCrossProduct > 0) !== zProductIsPositive ) return false;
 	}
 
-	var lastZCrossProduct = this.edges[edgesLen-1][0]*this.edges[0][1] - this.edges[edgesLen][1]*this.edges[0][0];
+	var lastZCrossProduct = this.edges[edgesLen-1][0]*this.edges[0][1] - this.edges[edgesLen-1][1]*this.edges[0][0];
 	if ( (lastZCrossProduct > 0) !== zProductIsPositive ) return false;
 
 	return true;
@@ -258,3 +258,29 @@ gdjs.Polygon.distance = function(minA, maxA, minB, maxB)
     if (minA < minB) return minB - maxA;
     else return minA - maxB;
 }
+
+/**
+ * Check if a point is inside a polygon.
+ *
+ * Uses <a href="https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html">PNPOLY</a> by W. Randolph Franklin.
+ *
+ * @method isPointInside
+ * @static
+ * @param poly {Polygon} The polygon to test
+ * @param x {Number} The point x coordinate
+ * @param y {Number} The point y coordinate
+ * @return {Boolean} true if the point is inside the polygon
+ */
+gdjs.Polygon.isPointInside = function(poly, x, y)
+{
+    var inside = false;
+    var vi, vj;
+    for (var i = 0, j = poly.vertices.length-1; i < poly.vertices.length; j = i++) {
+        vi = poly.vertices[i];
+        vj = poly.vertices[j];
+        if ( ((vi[1]>y) != (vj[1]>y)) && (x < (vj[0]-vi[0]) * (y-vi[1]) / (vj[1]-vi[1]) + vi[0]) )
+            inside = !inside;
+    }
+
+    return inside;
+};

@@ -87,8 +87,8 @@ void TimedEvent::SerializeTo(gd::SerializerElement & element) const
 {
     element.AddChild("name").SetValue(name);
     element.AddChild("timeout").SetValue(timeout.GetPlainString());
-    gd::EventsListSerialization::SaveConditions(conditions, element.AddChild("conditions"));
-    gd::EventsListSerialization::SaveActions(actions, element.AddChild("actions"));
+    gd::EventsListSerialization::SerializeInstructionsTo(conditions, element.AddChild("conditions"));
+    gd::EventsListSerialization::SerializeInstructionsTo(actions, element.AddChild("actions"));
     gd::EventsListSerialization::SerializeEventsTo(events, element.AddChild("events"));
 }
 
@@ -96,8 +96,8 @@ void TimedEvent::UnserializeFrom(gd::Project & project, const gd::SerializerElem
 {
     name = element.GetChild("name", 0, "Name").GetValue().GetString();
     timeout = element.GetChild("timeout", 0, "Timeout").GetValue().GetString();
-    gd::EventsListSerialization::OpenConditions(project, conditions, element.GetChild("conditions", 0, "Conditions"));
-    gd::EventsListSerialization::OpenActions(project, actions, element.GetChild("actions", 0, "Actions"));
+    gd::EventsListSerialization::UnserializeInstructionsFrom(project, conditions, element.GetChild("conditions", 0, "Conditions"));
+    gd::EventsListSerialization::UnserializeInstructionsFrom(project, actions, element.GetChild("actions", 0, "Actions"));
     gd::EventsListSerialization::UnserializeEventsFrom(project, events, element.GetChild("events", 0, "Events"));
 }
 
@@ -119,7 +119,7 @@ void TimedEvent::Render(wxDC & dc, int x, int y, unsigned int width, gd::EventsE
     dc.SetFont( renderingHelper->GetNiceFont().Bold()  );
     dc.SetTextForeground(wxColour(0,0,0));
     gd::String nameTxt;
-    if ( !name.empty() ) nameTxt = _(" (Name:  ")+name + ")";
+    if ( !name.empty() ) nameTxt = _(" (Name: ")+name + ")";
     dc.DrawText( _("Delayed execution after ")+timeout.GetPlainString()+_(" seconds.")+" "+nameTxt, x + 4, y + 3 );
 
     //Draw conditions rectangle

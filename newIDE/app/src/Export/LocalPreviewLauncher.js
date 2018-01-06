@@ -11,7 +11,7 @@ const BrowserWindow = electron ? electron.remote.BrowserWindow : null;
 const gd = global.gd;
 
 export default class LocalPreviewLauncher {
-  static _openPreviewWindow = (project, gamePath): void => {
+  static _openPreviewWindow = (project: gdProject, gamePath: string): void => {
     if (!BrowserWindow) return;
 
     const win = new BrowserWindow({
@@ -47,48 +47,49 @@ export default class LocalPreviewLauncher {
     });
   };
 
-  static launchLayoutPreview = (project, layout): Promise<any> => {
+  static launchLayoutPreview = (
+    project: gdProject,
+    layout: gdLayout
+  ): Promise<any> => {
     if (!project || !layout) return Promise.reject();
 
-    return LocalPreviewLauncher._prepareExporter().then(({
-      outputDir,
-      exporter,
-    }) => {
-      timeFunction(
-        () => {
-          exporter.exportLayoutForPixiPreview(project, layout, outputDir);
-          exporter.delete();
-          LocalPreviewLauncher._openPreviewWindow(project, outputDir);
-        },
-        time => console.info(`Preview took ${time}ms`)
-      );
-    });
+    return LocalPreviewLauncher._prepareExporter().then(
+      ({ outputDir, exporter }) => {
+        timeFunction(
+          () => {
+            exporter.exportLayoutForPixiPreview(project, layout, outputDir);
+            exporter.delete();
+            LocalPreviewLauncher._openPreviewWindow(project, outputDir);
+          },
+          time => console.info(`Preview took ${time}ms`)
+        );
+      }
+    );
   };
 
   static launchExternalLayoutPreview = (
-    project,
-    layout,
-    externalLayout
+    project: gdProject,
+    layout: gdLayout,
+    externalLayout: gdExternalLayout
   ): Promise<any> => {
     if (!project || !externalLayout) return Promise.reject();
 
-    return LocalPreviewLauncher._prepareExporter().then(({
-      outputDir,
-      exporter,
-    }) => {
-      timeFunction(
-        () => {
-          exporter.exportExternalLayoutForPixiPreview(
-            project,
-            layout,
-            externalLayout,
-            outputDir
-          );
-          exporter.delete();
-          LocalPreviewLauncher._openPreviewWindow(project, outputDir);
-        },
-        time => console.info(`Preview took ${time}ms`)
-      );
-    });
+    return LocalPreviewLauncher._prepareExporter().then(
+      ({ outputDir, exporter }) => {
+        timeFunction(
+          () => {
+            exporter.exportExternalLayoutForPixiPreview(
+              project,
+              layout,
+              externalLayout,
+              outputDir
+            );
+            exporter.delete();
+            LocalPreviewLauncher._openPreviewWindow(project, outputDir);
+          },
+          time => console.info(`Preview took ${time}ms`)
+        );
+      }
+    );
   };
 }

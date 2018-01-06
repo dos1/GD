@@ -1,16 +1,14 @@
 import React, { Component } from 'react';
-import Dialog from 'material-ui/Dialog';
+import Dialog from '../UI/Dialog';
 import FlatButton from 'material-ui/FlatButton';
 import Avatar from 'material-ui/Avatar';
 import { List, ListItem } from 'material-ui/List';
 import { mapFor } from '../Utils/MapFor';
 import flatten from 'lodash/flatten';
+import HelpButton from '../UI/HelpButton';
 
 const styles = {
-  objectIcon: { borderRadius: 0 },
-  content: {
-    padding: 0,
-  },
+  icon: { borderRadius: 0 },
 };
 
 export default class NewObjectDialog extends Component {
@@ -62,22 +60,20 @@ export default class NewObjectDialog extends Component {
     const { project, open, onClose } = this.props;
     if (!open || !project) return null;
 
-    const actions = [
-      <FlatButton label="Close" primary={false} onClick={onClose} />,
-    ];
-
     return (
       <Dialog
         title="Add a new object"
-        actions={actions}
-        modal
+        secondaryActions={<HelpButton helpPagePath="/objects" />}
+        actions={<FlatButton label="Close" primary={false} onClick={onClose} />}
+        onRequestClose={onClose}
         open={open}
-        bodyStyle={styles.content}
+        noMargin
         autoScrollBodyContent
       >
         <List>
           {this.state.objectMetadata.map(objectMetadata => {
-            if (objectMetadata.name === '') { // Base object is an "abstract" object
+            if (objectMetadata.name === '') {
+              // Base object is an "abstract" object
               return null;
             }
 
@@ -86,16 +82,12 @@ export default class NewObjectDialog extends Component {
                 leftAvatar={
                   <Avatar
                     src={objectMetadata.iconFilename}
-                    style={styles.objectIcon}
+                    style={styles.icon}
                   />
                 }
                 key={objectMetadata.name}
                 primaryText={objectMetadata.fullName}
-                secondaryText={
-                  <p>
-                    {objectMetadata.description}
-                  </p>
-                }
+                secondaryText={<p>{objectMetadata.description}</p>}
                 secondaryTextLines={2}
                 onClick={() => this.props.onChoose(objectMetadata.name)}
               />

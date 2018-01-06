@@ -1,62 +1,18 @@
 import React, { Component } from 'react';
+import muiThemeable from 'material-ui/styles/muiThemeable';
+import findIndex from 'lodash/findIndex';
 import {
-  SortableTreeWithoutDndContext as SortableTree,
+  SortableTreeWithoutDndContext,
   getNodeAtPath,
 } from 'react-sortable-tree';
-import EventsRenderingService from '../EventsRenderingService';
 import { mapFor } from '../../Utils/MapFor';
-import { eventsTree } from '../ClassNames';
-import findIndex from 'lodash/findIndex';
 import { getInitialSelection, isEventSelected } from '../SelectionHandler';
+import EventsRenderingService from './EventsRenderingService';
+import EventHeightsCache from './EventHeightsCache';
+import { eventsTree } from './ClassNames';
+import './style.css';
 
 const indentWidth = 22;
-
-/**
- * Store the height of events and notify a component whenever
- * heights have changed.
- * Needed for EventsTree as we need to tell it when heights have changed
- * so it can recompute the internal row heights of the react-virtualized List.
- */
-class EventHeightsCache {
-  eventHeights = {};
-  component = null;
-
-  constructor(component) {
-    this.component = component;
-  }
-
-  _notifyComponent() {
-    if (this.updateTimeoutId) {
-      return; // An update is already scheduled.
-    }
-
-    // Notify the component, on the next tick, that heights have changed
-    this.updateTimeoutId = setTimeout(
-      () => {
-        if (this.component) {
-          this.component.onHeightsChanged(() => this.updateTimeoutId = null);
-        } else {
-          this.updateTimeoutId = null;
-        }
-      },
-      0
-    );
-  }
-
-  setEventHeight(event, height) {
-    const cachedHeight = this.eventHeights[event.ptr];
-    if (!cachedHeight || cachedHeight !== height) {
-      // console.log(event.ptr, 'has a new height', height, 'old:', cachedHeight);
-      this._notifyComponent();
-    }
-
-    this.eventHeights[event.ptr] = height;
-  }
-
-  getEventHeight(event) {
-    return this.eventHeights[event.ptr] || 60;
-  }
-}
 
 /**
  * The component containing an event.
@@ -78,7 +34,7 @@ class EventContainer extends Component {
     this.forceUpdate();
   };
 
-  _onEventContextMenu = (domEvent) => {
+  _onEventContextMenu = domEvent => {
     domEvent.preventDefault();
     this.props.onEventContextMenu(domEvent.clientX, domEvent.clientY);
   };
@@ -89,11 +45,11 @@ class EventContainer extends Component {
 
     return (
       <div
-        ref={container => this._container = container}
+        ref={container => (this._container = container)}
         onClick={this.props.onEventClick}
         onContextMenu={this._onEventContextMenu}
       >
-        {EventComponent &&
+        {EventComponent && (
           <EventComponent
             project={project}
             layout={layout}
@@ -106,8 +62,14 @@ class EventContainer extends Component {
             onInstructionClick={this.props.onInstructionClick}
             onInstructionDoubleClick={this.props.onInstructionDoubleClick}
             onInstructionContextMenu={this.props.onInstructionContextMenu}
+            onInstructionsListContextMenu={
+              this.props.onInstructionsListContextMenu
+            }
             onParameterClick={this.props.onParameterClick}
-          />}
+            onOpenExternalEvents={this.props.onOpenExternalEvents}
+            onOpenLayout={this.props.onOpenLayout}
+          />
+        )}
       </div>
     );
   }
@@ -115,11 +77,19 @@ class EventContainer extends Component {
 
 const getNodeKey = ({ treeIndex }) => treeIndex;
 
+const ThemableSortableTree = ({ muiTheme, ...otherProps }) => (
+  <SortableTreeWithoutDndContext
+    className={`${eventsTree} ${muiTheme.eventsSheetRootClassName}`}
+    {...otherProps}
+  />
+);
+const SortableTree = muiThemeable()(ThemableSortableTree);
+
 /**
  * Display a tree of event. Builtin on react-sortable-tree so that event
  * can be drag'n'dropped and events rows are virtualized.
  */
-export default class EventsTree extends Component {
+export default class ThemableEventsTree extends Component {
   static defaultProps = {
     selection: getInitialSelection(),
   };
@@ -142,7 +112,7 @@ export default class EventsTree extends Component {
    */
   onHeightsChanged(cb) {
     this.forceUpdate(() => {
-      this._list.wrappedInstance.recomputeRowHeights();
+      if (this._list) this._list.wrappedInstance.recomputeRowHeights();
       if (cb) cb();
     });
   }
@@ -153,14 +123,14 @@ export default class EventsTree extends Component {
    */
   forceEventsUpdate(cb) {
     this.setState(this._eventsToTreeData(this.props.events), () => {
-      this._list.wrappedInstance.recomputeRowHeights();
+      if (this._list) this._list.wrappedInstance.recomputeRowHeights();
       if (cb) cb();
     });
   }
 
   scrollToEvent(event) {
     const row = this._getEventRow(event);
-    if (row !== -1) this._list.wrappedInstance.scrollToRow(row);
+    if (row !== -1 && this._list) this._list.wrappedInstance.scrollToRow(row);
   }
 
   _getEventRow(searchedEvent) {
@@ -180,13 +150,15 @@ export default class EventsTree extends Component {
         event,
         eventsList,
         indexInList: i,
-        expanded: true,
+        expanded: !event.isFolded(),
         depth,
         key: event.ptr, //TODO: useless?
         children: this._eventsToTreeData(
           event.getSubEvents(),
-          flatData,
-          depth + 1,
+          // flatData is a flat representation of events, one for each line.
+          // Hence it should not contain the folded events.
+          !event.isFolded() ? flatData : [],
+          depth + 1
         ).treeData,
       };
     });
@@ -206,12 +178,12 @@ export default class EventsTree extends Component {
       path: targetPath,
     });
     const targetNode = target.node;
-    const targetEventsList = targetNode && targetNode.event
-      ? targetNode.event.getSubEvents()
-      : this.props.events;
-    const targetPosition = targetNode && targetNode.children
-      ? targetNode.children.indexOf(node)
-      : 0;
+    const targetEventsList =
+      targetNode && targetNode.event
+        ? targetNode.event.getSubEvents()
+        : this.props.events;
+    const targetPosition =
+      targetNode && targetNode.children ? targetNode.children.indexOf(node) : 0;
 
     // Get the moved event and its list from the moved node.
     const { event, eventsList } = node;
@@ -232,6 +204,13 @@ export default class EventsTree extends Component {
     return true;
   };
 
+  _onVisibilityToggle = ({ node }) => {
+    const { event } = node;
+
+    event.setFolded(!event.isFolded());
+    this.forceEventsUpdate();
+  };
+
   _renderEvent = ({ node }) => {
     const { event, depth } = node;
 
@@ -248,30 +227,36 @@ export default class EventsTree extends Component {
         onInstructionClick={this.props.onInstructionClick}
         onInstructionDoubleClick={this.props.onInstructionDoubleClick}
         onParameterClick={this.props.onParameterClick}
-        onEventClick={() =>
-          this.props.onEventClick(node)}
+        onEventClick={() => this.props.onEventClick(node)}
         onEventContextMenu={(x, y) => this.props.onEventContextMenu(x, y, node)}
         onInstructionContextMenu={this.props.onInstructionContextMenu}
+        onInstructionsListContextMenu={this.props.onInstructionsListContextMenu}
+        onOpenExternalEvents={this.props.onOpenExternalEvents}
+        onOpenLayout={this.props.onOpenLayout}
       />
     );
   };
 
   render() {
+    const { height } = this.props;
+
     return (
-      <div style={{ height: this.props.height || 400 }}>
+      <div style={{ height: height || 400 }}>
         <SortableTree
-          className={eventsTree}
           treeData={this.state.treeData}
           scaffoldBlockPxWidth={indentWidth}
           onChange={() => {}}
+          onVisibilityToggle={this._onVisibilityToggle}
           onMoveNode={this._onMoveNode}
           canDrop={this._canDrop}
           rowHeight={({ index }) => {
             const event = this.state.flatData[index];
+            if (!event) return 0;
+
             return this.eventsHeightsCache.getEventHeight(event);
           }}
           reactVirtualizedListProps={{
-            ref: list => this._list = list,
+            ref: list => (this._list = list),
           }}
         />
       </div>

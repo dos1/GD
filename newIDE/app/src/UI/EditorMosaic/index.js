@@ -1,13 +1,15 @@
 import React, { Component } from 'react';
+import muiThemeable from 'material-ui/styles/muiThemeable';
 import {
   MosaicWindow as RMMosaicWindow,
-  MosaicWithoutDragDropContext,
+  MosaicWithoutDragDropContext as RMMosaicWithoutDragDropContext,
   getLeaves,
 } from 'react-mosaic-component';
 import CloseButton from './CloseButton';
-// Styles for Mosaic:
+
+// EditorMosaic default styling:
 import 'react-mosaic-component/react-mosaic-component.css';
-import '../Theme/Mosaic.css';
+import './style.css'
 
 const createMosaicNodesFromArray = (array, splitPercentage = 23) => {
   if (array.length === 0) return null;
@@ -37,13 +39,21 @@ const addRightNode = (currentNode, newNode, splitPercentage) => {
   };
 };
 
+const ThemableMosaicWithoutDragDropContext = (props) =>
+  <RMMosaicWithoutDragDropContext
+    className={`${props.muiTheme.mosaicRootClassName} mosaic-blueprint-theme mosaic-gd-theme`}
+    {...props}
+  />;
+
+const MosaicWithoutDragDropContext = muiThemeable()(ThemableMosaicWithoutDragDropContext);
+
 /**
  * @class EditorMosaic
  *
  * Can be used to create a mosaic of resizable editors.
  * Must be used inside a component wrapped in a DragDropContext.
  */
-class EditorMosaic extends Component {
+export default class ThemableEditorMosaic extends Component {
   constructor(props) {
     super(props);
 
@@ -69,10 +79,11 @@ class EditorMosaic extends Component {
   _onChange = mosaicNode => this.setState({ mosaicNode });
 
   render() {
+    const { editors } = this.props;
     return (
       <MosaicWithoutDragDropContext
-        renderTile={editorName => this.props.editors[editorName]}
-        className="mosaic-blueprint-theme mosaic-gd-theme"
+        renderTile={(editorName, path) =>
+          React.cloneElement(editors[editorName], { path })}
         value={this.state.mosaicNode}
         onChange={this._onChange}
       />
@@ -80,9 +91,15 @@ class EditorMosaic extends Component {
   }
 }
 
-export default EditorMosaic;
+/**
+ * @class EditorWindow
+ *
+ * A window that can be used in a EditorMosaic
+ */
 export const MosaicWindow = props => {
-  const toolbarControls = props.toolbarControls || [<CloseButton key="close" />];
+  const toolbarControls = props.toolbarControls || [
+    <CloseButton key="close" />,
+  ];
 
   return <RMMosaicWindow {...props} toolbarControls={toolbarControls} />;
 };

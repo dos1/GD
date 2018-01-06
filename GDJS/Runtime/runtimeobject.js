@@ -507,6 +507,17 @@ gdjs.RuntimeObject.variableRemoveChild = function(variable, childName) {
 gdjs.RuntimeObject.prototype.variableRemoveChild = gdjs.RuntimeObject.variableRemoveChild;
 
 /**
+ * @method variableClearChildren
+ * @static
+ * @private
+ * @param variable The variable to be cleared
+ */
+gdjs.RuntimeObject.variableClearChildren = function(variable) {
+    variable.clearChildren();
+};
+gdjs.RuntimeObject.prototype.variableClearChildren = gdjs.RuntimeObject.variableClearChildren;
+
+/**
  * Shortcut to test if a variable exists for the object.
  * @method hasVariable
  * @param name {String} The variable to be tested
@@ -1190,6 +1201,23 @@ gdjs.RuntimeObject.prototype.cursorOnObject = function(runtimeScene) {
 
     return false;
 };
+
+/**
+ * \brief Check if a point is inside the object collision hitboxes.
+ * @method isCollidingWithPoint
+ * @param pointX The point x coordinate.
+ * @param pointY The point y coordinate.
+ * @return true if the point is inside the object collision hitboxes.
+ */
+gdjs.RuntimeObject.prototype.isCollidingWithPoint = function(pointX, pointY) {
+    var hitBoxes = this.getHitBoxes();
+    for(var i = 0; i < this.hitBoxes.length; ++i) {
+       if ( gdjs.Polygon.isPointInside(hitBoxes[i], pointX, pointY) )
+            return true;
+    }
+
+    return false;
+}
 
 
 /**

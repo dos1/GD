@@ -46,6 +46,7 @@ BaseObjectExtension::BaseObjectExtension()
     objectActions["ModVarObjetTxt"].SetFunctionName("ReturnVariable").SetManipulatedType("string");
     objectConditions["ObjectVariableChildExists"].SetFunctionName("VariableChildExists");
     objectActions["ObjectVariableRemoveChild"].SetFunctionName("VariableRemoveChild");
+    objectActions["ObjectVariableClearChildren"].SetFunctionName("VariableClearChildren");
 
     objectActions["Cache"].SetFunctionName("SetHidden");
     objectActions["Montre"].SetFunctionName("SetHidden");
@@ -68,6 +69,7 @@ BaseObjectExtension::BaseObjectExtension()
     objectActions["Rebondir"].SetFunctionName("SeparateObjectsWithForces").SetIncludeFile("GDCpp/Extensions/Builtin/ObjectTools.h");
     objectActions["Ecarter"].SetFunctionName("SeparateObjectsWithoutForces").SetIncludeFile("GDCpp/Extensions/Builtin/ObjectTools.h");
     objectActions["SeparateFromObjects"].SetFunctionName("SeparateFromObjects").SetIncludeFile("GDCpp/Extensions/Builtin/ObjectTools.h");
+    objectConditions["CollisionPoint"].SetFunctionName("IsCollidingWithPoint");
 
 
     objectExpressions["X"].SetFunctionName("GetX");

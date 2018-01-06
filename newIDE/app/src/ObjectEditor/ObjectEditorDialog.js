@@ -1,10 +1,12 @@
+// @flow weak
 import React, { Component } from 'react';
 import FlatButton from 'material-ui/FlatButton';
 import ObjectsEditorService from './ObjectsEditorService';
 import Dialog from '../UI/Dialog';
-import EmptyMessage from '../UI/EmptyMessage';
-import { Column, Line } from '../UI/Grid';
+import HelpButton from '../UI/HelpButton';
+import BehaviorsEditor from '../BehaviorsEditor';
 import { Tabs, Tab } from 'material-ui/Tabs';
+import { withSerializableObject } from '../Utils/SerializableObjectEditorContainer';
 
 const styles = {
   titleContainer: {
@@ -12,15 +14,98 @@ const styles = {
   },
 };
 
-export default class ObjectEditorDialog extends Component {
-  constructor(props) {
-    super(props);
+type StateType = {|
+  currentTab: string,
+|};
 
-    this.state = {
-      editor: null,
-      currentTab: 'properties',
-    };
+export class ObjectEditorDialog extends Component<*, StateType> {
+  state = {
+    currentTab: 'properties',
+  };
+
+  _onChangeTab = (value: string) => {
+    this.setState({
+      currentTab: value,
+    });
+  };
+
+  render() {
+    const actions = [
+      <FlatButton
+        key="cancel"
+        label="Cancel"
+        onClick={this.props.onCancel}
+      />,
+      <FlatButton
+        key="apply"
+        label="Apply"
+        primary
+        keyboardFocused
+        onClick={this.props.onApply}
+      />,
+    ];
+
+    const EditorComponent = this.props.editorComponent;
+    const { currentTab } = this.state;
+
+    return (
+      <Dialog
+        key={this.props.object && this.props.object.ptr}
+        secondaryActions={<HelpButton helpPagePath={this.props.helpPagePath} />}
+        actions={actions}
+        autoScrollBodyContent
+        noMargin
+        modal
+        onRequestClose={this.props.onCancel}
+        open={this.props.open}
+        title={
+          <div>
+            <Tabs value={currentTab} onChange={this._onChangeTab}>
+              <Tab label="Properties" value={'properties'} key={'properties'} />
+              <Tab label="Behaviors" value={'behaviors'} key={'behaviors'} />
+            </Tabs>
+          </div>
+        }
+        titleStyle={styles.titleContainer}
+      >
+        {currentTab === 'properties' &&
+          EditorComponent && (
+            <EditorComponent
+              object={this.props.object}
+              project={this.props.project}
+              resourceSources={this.props.resourceSources}
+              onChooseResource={this.props.onChooseResource}
+              onSizeUpdated={() =>
+                this.forceUpdate() /*Force update to ensure dialog is properly positionned*/}
+            />
+          )}
+        {currentTab === 'behaviors' && (
+          <BehaviorsEditor
+            object={this.props.object}
+            project={this.props.project}
+            onSizeUpdated={() =>
+              this.forceUpdate() /*Force update to ensure dialog is properly positionned*/}
+          />
+        )}
+      </Dialog>
+    );
   }
+}
+
+type ContainerStateType = {|
+  dialogComponent: ?Class<*>,
+  editorComponent: ?Class<*>,
+  castToObjectType: ?Function,
+  helpPagePath: ?string,
+|};
+
+export default class ObjectEditorDialogContainer extends Component<*, *> {
+  state: ContainerStateType = {
+    dialogComponent: null,
+    editorComponent: null,
+    castToObjectType: null,
+    helpPagePath: null,
+  };
 
   componentWillMount() {
     this._loadFrom(this.props.object);
@@ -35,77 +120,51 @@ export default class ObjectEditorDialog extends Component {
     }
   }
 
-  _onChangeTab = value => {
-    this.setState({
-      currentTab: value,
-    });
-  };
-
-  _onApply = () => {
-    if (this.props.onApply) this.props.onApply();
-  };
-
   _loadFrom(object) {
     if (!object) return;
 
+    const editorConfiguration = ObjectsEditorService.getEditorConfiguration(
+      object.getType()
+    );
+    if (!editorConfiguration) {
+      return this.setState({
+        dialogComponent: null,
+        editorComponent: null,
+        castToObjectType: null,
+      });
+    }
+
     this.setState({
-      editor: ObjectsEditorService.getEditor(object.getType()),
+      dialogComponent: withSerializableObject(ObjectEditorDialog, {
+        propName: 'object',
+        newObjectCreator: editorConfiguration.newObjectCreator,
+        useProjectToUnserialize: true,
+      }),
+      editorComponent: editorConfiguration.component,
+      helpPagePath: editorConfiguration.helpPagePath,
+      castToObjectType: editorConfiguration.castToObjectType,
     });
   }
 
   render() {
-    const { editor } = this.state;
-    if (!editor) return null;
+    if (
+      !this.props.object ||
+      !this.state.dialogComponent ||
+      !this.state.castToObjectType
+    )
+      return null;
 
-    const actions = [
-      <FlatButton
-        label="Apply"
-        primary
-        keyboardFocused
-        onTouchTap={this._onApply}
-      />,
-    ];
-
-    const EditorComponent = editor.component;
-    // const containerProps = editor.containerProps;
-    const { currentTab } = this.state;
+    const EditorDialog: Class<*> = this.state.dialogComponent;
+    const { editorComponent, castToObjectType, helpPagePath } = this.state;
 
     return (
-      <Dialog
+      <EditorDialog
+        editorComponent={editorComponent}
         key={this.props.object && this.props.object.ptr}
-        actions={actions}
-        autoScrollBodyContent
-        noMargin
-        modal
-        onRequestClose={this.props.onCancel}
-        repositionOnUpdate={false}
-        open={this.props.open}
-        title={
-          <div>
-            <Tabs value={currentTab} onChange={this._onChangeTab}>
-              <Tab label="Properties" value={'properties'} key={'properties'} />
-              <Tab label="Behaviors" value={'behaviors'} key={'behaviors'} />
-            </Tabs>
-          </div>
-        }
-        titleStyle={styles.titleContainer}
-      >
-        {currentTab === 'properties' &&
-          EditorComponent &&
-          <EditorComponent
-            object={this.props.object}
-            project={this.props.project}
-            resourceSources={this.props.resourceSources}
-          />}
-        {currentTab === 'behaviors' &&
-          <Column>
-            <Line>
-              <EmptyMessage>
-                Behaviors are not available yet.
-              </EmptyMessage>
-            </Line>
-          </Column>}
-      </Dialog>
+        helpPagePath={helpPagePath}
+        {...this.props}
+        object={castToObjectType(this.props.object)}
+      />
     );
   }
 }

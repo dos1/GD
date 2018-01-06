@@ -3,6 +3,7 @@ import AutoComplete from 'material-ui/AutoComplete';
 import MenuItem from 'material-ui/MenuItem';
 import Divider from 'material-ui/Divider';
 import Add from 'material-ui/svg-icons/content/add';
+import { fuzzyOrEmptyFilter } from '../Utils/FuzzyOrEmptyFilter';
 
 export default class ResourceSelector extends Component {
   constructor(props) {
@@ -26,7 +27,9 @@ export default class ResourceSelector extends Component {
         .filter(source => source.kind === this.props.resourceKind)
         .map(source => ({
           text: '',
-          value: <MenuItem primaryText={source.name} rightIcon={<Add />} />,
+          value: (
+            <MenuItem primaryText={source.displayName} rightIcon={<Add />} />
+          ),
           onClick: () => this._addFrom(source),
         })),
       {
@@ -40,8 +43,10 @@ export default class ResourceSelector extends Component {
     this.allResourcesNames = resourcesManager.getAllResourcesList().toJSArray();
     if (this.props.resourceKind) {
       this.allResourcesNames = this.allResourcesNames.filter(resourceName => {
-        return resourcesManager.getResource(resourceName).getKind() ===
-          this.props.resourceKind;
+        return (
+          resourcesManager.getResource(resourceName).getKind() ===
+          this.props.resourceKind
+        );
       });
     }
     this.defaultItems = this._getDefaultItems();
@@ -51,9 +56,8 @@ export default class ResourceSelector extends Component {
   _addFrom = source => {
     if (!source) return;
 
-    const { project } = this.props;
-    source
-      .chooseResources(project, false)
+    const { project, onChooseResource } = this.props;
+    onChooseResource(source.name, false)
       .then(resources => {
         if (!resources.length) return;
         const resource = resources[0];
@@ -98,7 +102,7 @@ export default class ResourceSelector extends Component {
     return (
       <AutoComplete
         floatingLabelText={this.props.floatingLabelText || 'Select an image'}
-        filter={AutoComplete.fuzzyFilter}
+        filter={fuzzyOrEmptyFilter}
         openOnFocus
         dataSource={this.autoCompleteData || []}
         onUpdateInput={this._onUpdate}
@@ -106,6 +110,9 @@ export default class ResourceSelector extends Component {
         errorText={errorText}
         searchText={this.state.resourceName}
         fullWidth={this.props.fullWidth}
+        menuProps={{
+          maxHeight: 250,
+        }}
       />
     );
   }

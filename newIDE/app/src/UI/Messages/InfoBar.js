@@ -26,9 +26,9 @@ export default class InfoBar extends Component {
   }
 
   render() {
-    const hidden = this.props.messageId && localStorage.getItem(
-      `gdevelop.hiddenMessages.${this.props.messageId}`
-    );
+    const hidden =
+      this.props.messageId &&
+      localStorage.getItem(`gdevelop.hiddenMessages.${this.props.messageId}`);
 
     return (
       <Snackbar
@@ -36,7 +36,7 @@ export default class InfoBar extends Component {
         message={this.props.message}
         onRequestClose={() => this.setState({ dismissed: true })}
         action="Got it"
-        onActionTouchTap={this.handleGotIt}
+        onActionClick={this.handleGotIt}
       />
     );
   }

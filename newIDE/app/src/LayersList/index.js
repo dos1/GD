@@ -85,7 +85,8 @@ class LayersListBody extends Component {
         disabled
         onAdd={() => {
           const name = newNameGenerator('Layer', name =>
-            layersContainer.hasLayerNamed(name));
+            layersContainer.hasLayerNamed(name)
+          );
           layersContainer.insertNewLayer(
             name,
             layersContainer.getLayersCount()
@@ -111,14 +112,19 @@ const SortableLayersListBody = SortableContainer(LayersListBody);
 SortableLayersListBody.muiName = 'TableBody';
 
 export default class LayersList extends Component {
-  shouldComponentUpdate() {
+  shouldComponentUpdate(nextProps) {
     // Rendering the component can be costly as it iterates over
     // every layers, so the prop freezeUpdate allow to ask the component to stop
     // updating, for example when hidden.
-    return !this.props.freezeUpdate;
+    return !nextProps.freezeUpdate;
   }
 
   render() {
+    // Force the list to be mounted again if layersContainer
+    // has been changed. Avoid accessing to invalid objects that could
+    // crash the app.
+    const listKey = this.props.layersContainer.ptr;
+
     return (
       <Table selectable={false}>
         <TableHeader displaySelectAll={false} adjustForCheckbox={false}>
@@ -132,12 +138,16 @@ export default class LayersList extends Component {
           </TableRow>
         </TableHeader>
         <SortableLayersListBody
+          key={listKey}
           layersContainer={this.props.layersContainer}
           onRemoveLayer={this.props.onRemoveLayer}
           onRenameLayer={this.props.onRenameLayer}
-          onSortEnd={({oldIndex, newIndex}) => {
+          onSortEnd={({ oldIndex, newIndex }) => {
             const layersCount = this.props.layersContainer.getLayersCount();
-            this.props.layersContainer.moveLayer(layersCount - 1 - oldIndex, layersCount - 1 - newIndex);
+            this.props.layersContainer.moveLayer(
+              layersCount - 1 - oldIndex,
+              layersCount - 1 - newIndex
+            );
             this.forceUpdate();
           }}
           helperClass="sortable-helper"
